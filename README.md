@@ -1,4 +1,6 @@
-# claude_usage
+# claude_monitor.sh
+
+<img width="1269" height="535" alt="claude_monitor" src="https://github.com/user-attachments/assets/66d7968b-746f-4a3d-a297-efe7a4adeb43" />
 
 Script de shell para acompanhar o uso da Claude Code (limites de 5 horas
 e semanal) sem precisar abrir o app.
