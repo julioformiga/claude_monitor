@@ -21,7 +21,7 @@ o token de acesso direto do arquivo de credenciais do Claude Code.
 
 Monitor ao vivo, estilo btop: duas barras (uma por limite) ocupando a
 largura do terminal, coloridas por faixa (verde/amarelo/vermelho),
-redesenhadas a cada segundo e reconsultando a API a cada 60s. As
+redesenhadas a cada segundo e reconsultando a API a cada 90s. As
 "labels" das barras mostram a contagem regressiva até o reset de cada
 janela em vez de texto fixo.
 
@@ -33,15 +33,34 @@ Atalhos:
 - `q` ou `Ctrl+C` — sai (restaura o terminal)
 - `espaço` — força uma nova consulta à API imediatamente
 
-## Comportamento conhecido: 401/429 na janela de 5h "fria"
+## Quando a consulta falha: o ícone `⚠`
 
-Quando a janela de 5h ainda não foi iniciada (nenhuma mensagem enviada no
-ciclo atual), o endpoint às vezes responde com HTTP 401 ou 429 em vez de
-um 200 limpo com `utilization: 0`. O script tenta de novo (1s, depois
-2s) antes de assumir que a janela está em 0% — não é tratado como erro
-fatal. O valor semanal mostrado, nesse caso, é o último obtido com
-sucesso (ou um aviso de indisponível, se ainda não houve nenhuma
-consulta bem-sucedida nessa execução).
+O endpoint `/api/oauth/usage` tem um throttle apertado e responde **429**
+com alguma frequência — poucas consultas seguidas já bastam para
+estourá-lo. O 429 não diz nada sobre o uso real, e o 401 significa token
+expirado; **nenhum dos dois é motivo para zerar a barra**.
+
+Em qualquer falha o script mantém a última leitura conhecida na tela e
+liga um ícone de alerta ao lado da contagem regressiva:
+
+```
+▆ ⚠ 1h20m [██████████░░░░░░░░░░]  45%     ← dado preservado, consulta falhou
+▃   4d13m [████████░░░░░░░░░░░░]  39%
+```
+
+- `⚠` amarelo — throttle (429), falha de rede, resposta inesperada, ou
+  leitura vinda do cache em disco.
+- `⚠` vermelho — 401: o token expirou. Abra uma sessão do Claude Code
+  para renová-lo.
+
+O ícone some na primeira consulta bem-sucedida. Ele ocupa um slot fixo,
+então as colunas não se deslocam quando aparece.
+
+Para não realimentar o throttle, é **uma requisição por ciclo** (sem
+rajada de retentativas) e, a cada falha seguida, o intervalo dobra:
+90s → 180s → 360s → 600s (teto), voltando a 90s no primeiro 200. Um
+`Retry-After` maior que zero é respeitado. `espaço` força uma consulta
+imediata mesmo durante o backoff.
 
 ## Como funciona
 
@@ -49,8 +68,9 @@ consulta bem-sucedida nessa execução).
 2. `GET https://api.anthropic.com/api/oauth/usage` com esse token como
    Bearer.
 3. Extrai `five_hour.utilization` e `seven_day.utilization` (e os
-   respectivos `resets_at`) da resposta.
-
-Se a API retornar 401 de forma persistente mesmo com o 5h já iniciado, o
-token provavelmente expirou — abra uma sessão do Claude Code para
-renová-lo.
+   respectivos `resets_at`) da resposta, aceitando só valores numéricos
+   — vários campos do payload vêm `null`.
+4. Guarda a resposta em `~/.cache/claude_monitor/last.json` (respeita
+   `XDG_CACHE_HOME`). Assim, se o monitor subir e cair no throttle logo
+   de cara, já abre mostrando a última leitura com `⚠` em vez de
+   "indisponível".

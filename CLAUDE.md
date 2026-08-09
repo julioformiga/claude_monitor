@@ -22,3 +22,8 @@ quirk de 401/429 na janela de 5h "fria".
   deste arquivo esteja em pt-BR e os nomes de arquivo em inglês.
 - Sem dependências além de `bash`, `jq`, `curl` e `tput` — evitar somar
   novas dependências externas sem necessidade real.
+- **Nunca sintetizar valor de uso a partir de erro HTTP.** 429 é throttle
+  do endpoint e 401 é token expirado; nenhum dos dois informa a
+  utilização. Em falha, preservar a última leitura e sinalizar com `⚠`.
+  Já houve um bug assim: 429 virava `FIVE_HOUR=0` e a barra de 5h zerava
+  sozinha.
