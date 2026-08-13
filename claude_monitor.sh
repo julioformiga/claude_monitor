@@ -36,13 +36,18 @@ FAIL_KIND=""
 CONSEC_FAILS=0
 NEXT_REFRESH=$REFRESH_SECONDS
 STTY_SAVED=""
-[ -t 0 ] && STTY_SAVED=$(stty -g 2>/dev/null || true)
+if [ -t 0 ]; then
+  STTY_SAVED=$(stty -g 2>/dev/null || true)
+fi
 
 cleanup() {
   rm -f "$TMP_RESPONSE" "$TMP_HEADERS"
   tput cnorm 2>/dev/null || true
   tput rmcup 2>/dev/null || true
-  [ -n "$STTY_SAVED" ] && stty "$STTY_SAVED" 2>/dev/null || true
+  if [ -n "$STTY_SAVED" ]; then
+    stty "$STTY_SAVED" 2>/dev/null || true
+  fi
+  return 0
 }
 trap cleanup EXIT INT TERM
 
@@ -259,11 +264,11 @@ draw_screen() {
   remaining=$((NEXT_REFRESH - elapsed))
   [ "$remaining" -lt 0 ] && remaining=0
   total_level=$((remaining * 14 / NEXT_REFRESH))
-  [ "$total_level" -gt 14 ] && total_level=14
+  if [ "$total_level" -gt 14 ]; then total_level=14; fi
   bottom_level=$total_level
-  [ "$bottom_level" -gt 7 ] && bottom_level=7
+  if [ "$bottom_level" -gt 7 ]; then bottom_level=7; fi
   top_level=$((total_level - 7))
-  [ "$top_level" -lt 0 ] && top_level=0
+  if [ "$top_level" -lt 0 ]; then top_level=0; fi
   top_char="${LEVEL_CHARS[$top_level]}"
   bottom_char="${LEVEL_CHARS[$bottom_level]}"
 
@@ -307,7 +312,7 @@ draw_screen() {
   # evita o "clarão" de limpar a tela toda e depois redesenhar aos pedaços
   frame=$(printf '%s\n%s\033[K' "$bar1" "$bar2")
 
-  tput cup 0 0
+  tput cup 0 0 2>/dev/null || true
   printf '%s' "$frame"
 }
 
@@ -328,8 +333,10 @@ while :; do
   key=""
   IFS= read -r -t 1 -n 1 key || true
   case "$key" in
-    q) break ;;
+    q) exit 0 ;;
     ' ') elapsed=$NEXT_REFRESH ;;
     *) elapsed=$((elapsed + 1)) ;;
   esac
 done
+
+exit 0

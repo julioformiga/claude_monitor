@@ -62,7 +62,28 @@ rajada de retentativas) e, a cada falha seguida, o intervalo dobra:
 `Retry-After` maior que zero é respeitado. `espaço` força uma consulta
 imediata mesmo durante o backoff.
 
-## Como funciona
+## `gemini_monitor.sh`
+
+Monitor ao vivo para o **Antigravity** (Gemini CLI), estilo btop. Exibe 4 barras cobrindo a utilização e tempo restante de reset dos grupos de modelos:
+- **Modelos Gemini** (`G-5h` e `G-Sem`)
+- **Modelos de Terceiros (Claude & GPT)** (`3P-5h` e `3P-Sem`)
+
+```
+$ ./gemini_monitor.sh
+```
+
+### Como funciona
+
+1. Localiza dinamicamente a porta HTTP do servidor local do Antigravity (`agy`) inspecionando os logs recentes em `~/.gemini/antigravity-cli/log/cli-*.log` e a tabela de sockets locais (`ss`).
+2. Dispara requisições RPC para `http://127.0.0.1:<PORT>/exa.language_server_pb.LanguageServerService/RetrieveUserQuotaSummary`.
+3. Extrai as frações restantes (`remainingFraction`) e instantes de reset (`resetTime`), convertendo para porcentagem de utilização (`(1 - remainingFraction) * 100`).
+4. Salva a última leitura em `~/.cache/gemini_monitor/last.json` para preservação em caso de queda do processo ou reinício sem conectividade.
+
+Atalhos:
+- `q` ou `Ctrl+C` — sai (restaura o terminal)
+- `espaço` — força uma nova consulta imediatamente
+
+## Como funciona (Claude Monitor)
 
 1. Lê `claudeAiOauth.accessToken` de `~/.claude/.credentials.json`.
 2. `GET https://api.anthropic.com/api/oauth/usage` com esse token como
